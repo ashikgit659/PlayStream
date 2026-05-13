@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PlayStream — Watch Together. Anywhere.</title>
+  <meta name="description" content="Create a room, invite your friends, and watch videos together in perfect sync. Real-time chat, shared playlists, and seamless video synchronization.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+  <link rel="stylesheet" href="/css/shared.css">
+  <link rel="stylesheet" href="/css/landing.css">
+</head>
+<body>
+  <!-- Animated Background -->
+  <div class="landing-bg">
+    <canvas id="particles-canvas"></canvas>
+  </div>
+
+  <!-- Main Content -->
+  <main class="landing-container">
+    <!-- Logo -->
+    <div class="logo-section">
+      <div class="logo-icon">▶</div>
+      <h1 class="logo-text">PlayStream</h1>
+      <p class="logo-tagline">Watch Together. Anywhere.</p>
+    </div>
+
+    <!-- Main Card -->
+    <div class="main-card glass" id="main-card">
+      <h2>Start Watching</h2>
+      <p class="subtitle">Create a room or join an existing one</p>
+
+      <div class="form-group">
+        <label for="display-name">Your Display Name</label>
+        <input type="text" id="display-name" class="input-field" placeholder="Enter your name..." maxlength="20" autocomplete="off">
+      </div>
+
+      <div class="action-buttons">
+        <button class="btn btn-primary btn-lg" id="create-room-btn">
+          <span>🎬</span> Create Room
+        </button>
+        <div class="divider">or</div>
+        <button class="btn btn-secondary" id="join-room-btn">
+          <span>🔗</span> Join Existing Room
+        </button>
+      </div>
+    </div>
+
+    <!-- Features -->
+    <div class="features-strip">
+      <div class="feature-item">
+        <div class="feature-icon">🔄</div>
+        <span class="feature-label">Synced Playback</span>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">💬</div>
+        <span class="feature-label">Live Chat</span>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">📋</div>
+        <span class="feature-label">Video Queue</span>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">👥</div>
+        <span class="feature-label">Unlimited Friends</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- Join Room Modal -->
+  <div class="modal-overlay join-modal" id="join-modal">
+    <div class="modal-content">
+      <div class="modal-card glass" style="position:relative;">
+        <button class="close-modal-btn" id="close-join-modal">✕</button>
+        <h2>Join a Room</h2>
+        <p class="subtitle">Enter the 6-character room code</p>
+        <input type="text" id="room-code-input" class="input-field room-code-input" placeholder="ABC123" maxlength="6" autocomplete="off">
+        <p class="error-text" id="join-error"></p>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" id="cancel-join-btn">Cancel</button>
+          <button class="btn btn-primary" id="confirm-join-btn">
+            <span>🚀</span> Join Party
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="/js/landing.js"></script>
+</body>
+</html>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PlayStream — Watch Party</title>
+  <meta name="description" content="Watch videos together in real-time with your friends.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+  <link rel="stylesheet" href="/css/shared.css">
+  <link rel="stylesheet" href="/css/room.css">
+</head>
+<body>
+  <div class="room-layout">
+    <!-- Top Bar -->
+    <header class="top-bar">
+      <div class="top-bar-left">
+        <a href="/" class="top-bar-logo">
+          <div class="top-bar-logo-icon">▶</div>
+          <span class="text-gradient">PlayStream</span>
+        </a>
+        <div class="room-info">
+          <div class="room-code-display" id="room-code-display" title="Click to copy room code">
+            <span id="room-code-text">------</span>
+            <span class="copy-icon">📋</span>
+          </div>
+          <div class="participant-count">
+            <span class="online-dot"></span>
+            <span id="participant-count-text">0 watching</span>
+          </div>
+        </div>
+      </div>
+      <div class="top-bar-right">
+        <button class="btn btn-ghost btn-sm" id="host-badge" style="display:none;">
+          <span>👑</span> You're the Host
+        </button>
+        <button class="btn btn-danger btn-sm" id="leave-room-btn">
+          <span>🚪</span> Leave
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="room-content">
+      <!-- Video Section -->
+      <div class="video-section">
+        <div class="video-wrapper">
+          <video id="video-player" preload="metadata"></video>
+          <div id="youtube-container" style="display:none;position:absolute;inset:0;">
+            <div id="youtube-player" style="width:100%;height:100%;"></div>
+          </div>
+          <div class="video-placeholder" id="video-placeholder">
+            <div class="placeholder-icon">🎬</div>
+            <div class="placeholder-text">No video loaded</div>
+            <div class="placeholder-sub">Paste a video or YouTube URL below to get started</div>
+          </div>
+        </div>
+
+        <!-- Custom Controls -->
+        <div class="video-controls" id="video-controls">
+          <button class="control-btn" id="play-pause-btn" title="Play/Pause">▶</button>
+          <div class="seek-bar-container">
+            <span class="time-display" id="time-current">0:00</span>
+            <input type="range" class="seek-bar" id="seek-bar" min="0" max="100" value="0" step="0.1">
+            <span class="time-display" id="time-duration">0:00</span>
+          </div>
+          <button class="control-btn" id="volume-btn" title="Mute/Unmute">🔊</button>
+          <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" value="1" step="0.05">
+          <button class="control-btn" id="fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+
+        <!-- URL Input -->
+        <div class="url-input-bar">
+          <input type="text" class="input-field" id="video-url-input" placeholder="Paste video or YouTube URL..." autocomplete="off">
+          <button class="btn btn-primary btn-sm" id="load-video-btn">
+            <span>▶</span> Load
+          </button>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <aside class="sidebar" id="sidebar">
+        <!-- Tabs -->
+        <div class="sidebar-tabs">
+          <button class="sidebar-tab active" data-tab="chat">
+            💬 Chat <span class="tab-count" id="chat-count" style="display:none;">0</span>
+          </button>
+          <button class="sidebar-tab" data-tab="participants">
+            👥 People <span class="tab-count" id="people-count">0</span>
+          </button>
+          <button class="sidebar-tab" data-tab="queue">
+            📋 Queue <span class="tab-count" id="queue-count" style="display:none;">0</span>
+          </button>
+        </div>
+
+        <!-- Chat Panel -->
+        <div class="tab-panel active" id="panel-chat">
+          <div class="chat-messages" id="chat-messages"></div>
+          <div class="emoji-bar">
+            <button class="emoji-btn" data-emoji="😂">😂</button>
+            <button class="emoji-btn" data-emoji="❤️">❤️</button>
+            <button class="emoji-btn" data-emoji="🔥">🔥</button>
+            <button class="emoji-btn" data-emoji="👏">👏</button>
+            <button class="emoji-btn" data-emoji="😮">😮</button>
+            <button class="emoji-btn" data-emoji="😢">😢</button>
+            <button class="emoji-btn" data-emoji="🎉">🎉</button>
+          </div>
+          <div class="chat-input-area">
+            <input type="text" class="chat-input" id="chat-input" placeholder="Type a message..." maxlength="500" autocomplete="off">
+            <button class="chat-send-btn" id="chat-send-btn">➤</button>
+          </div>
+        </div>
+
+        <!-- Participants Panel -->
+        <div class="tab-panel" id="panel-participants">
+          <div class="participants-list" id="participants-list"></div>
+        </div>
+
+        <!-- Queue Panel -->
+        <div class="tab-panel" id="panel-queue">
+          <div class="queue-add-form">
+            <input type="text" class="input-field" id="queue-url-input" placeholder="Add video URL..." autocomplete="off">
+            <button class="btn btn-primary btn-sm" id="queue-add-btn">+</button>
+          </div>
+          <div class="queue-list" id="queue-list">
+            <div class="queue-empty" id="queue-empty">
+              <div class="queue-empty-icon">📋</div>
+              <span>Queue is empty</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Host note -->
+        <div class="host-controls-note" id="host-note" style="display:none;">
+          Only the host can control video playback
+        </div>
+      </aside>
+
+      <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    </div>
+  </div>
+
+  <!-- Mobile sidebar toggle -->
+  <button class="sidebar-toggle" id="sidebar-toggle">💬</button>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script src="/js/room.js"></script>
+</body>
+</html>
