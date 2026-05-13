@@ -1,0 +1,20 @@
+{
+  "name": "playstream",
+  "version": "1.0.0",
+  "description": "PlayStream — Watch Together. Anywhere. A real-time watch party web application.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": ["watch-party", "video-sync", "real-time", "socket.io"],
+  "author": "PlayStream Team",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.0",
+    "socket.io": "^4.7.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}
