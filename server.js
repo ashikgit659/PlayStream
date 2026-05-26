@@ -10,6 +10,11 @@ const io = new Server(server, {
   cors: { origin: '*' }
 });
 
+// Health check endpoint for Railway
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
