@@ -18,6 +18,21 @@ app.get('/health', (req, res) => {
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Error handling
+server.on('error', (err) => {
+  console.error('Server error:', err);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Note: not exiting here as it might be handled elsewhere
+});
+
 // ─── In-Memory State ────────────────────────────────────────────────
 const rooms = new Map();
 
