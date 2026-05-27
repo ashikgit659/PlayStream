@@ -86,7 +86,17 @@ function createYTPlayer(videoId, startTime, autoplay) {
         } else if (e.data === YT.PlayerState.PAUSED) {
           playPauseBtn.textContent = '▶';
           socket.emit('video-pause', { time: ytPlayer.getCurrentTime() });
+        } else if (e.data === YT.PlayerState.ENDED) {
+          // Video ended, potentially advance queue
+          // Host handles queue advancement
         }
+      },
+      onError: (e) => {
+        showToast('YouTube video error. Please check the URL.', 'error');
+        // Fall back to placeholder
+        videoPlaceholder.classList.remove('hidden');
+        document.getElementById('youtube-container').style.display = 'none';
+        video.style.display = 'block';
       }
     }
   });
@@ -123,6 +133,8 @@ const volumeSlider = document.getElementById('volume-slider');
 const fullscreenBtn = document.getElementById('fullscreen-btn');
 const videoUrlInput = document.getElementById('video-url-input');
 const loadVideoBtn = document.getElementById('load-video-btn');
+const fileInput = document.getElementById('file-input');
+const fileBtn = document.getElementById('file-btn');
 const roomCodeText = document.getElementById('room-code-text');
 const roomCodeDisplay = document.getElementById('room-code-display');
 const participantCountText = document.getElementById('participant-count-text');
@@ -211,12 +223,20 @@ function initRoom(data) {
   // Load existing video
   if (data.videoState && data.videoState.url) {
     loadVideo(data.videoState.url, false);
-    video.addEventListener('loadedmetadata', () => {
-      video.currentTime = data.videoState.currentTime || 0;
-      if (data.videoState.playing) {
-        video.play().catch(() => {});
-      }
-    }, { once: true });
+video.addEventListener('loadedmetadata', () => {
+  if (data.videoState.currentTime || 0) {
+    video.currentTime = data.videoState.currentTime || 0;
+  }
+  if (data.videoState.playing) {
+    video.play().catch(() => {});
+  }
+}, { once: true });
+
+video.addEventListener('error', () => {
+  showToast('Failed to load video. Please check the URL or file.', 'error');
+  videoPlaceholder.classList.remove('hidden');
+  video.style.display = 'none';
+});
   }
 
   // Load queue
@@ -247,6 +267,12 @@ leaveRoomBtn.addEventListener('click', () => {
 
 function loadVideo(url, emit = true) {
   if (!url) return;
+  
+  // Clean up previous object URLs if they were blob URLs
+  if (currentVideoType === 'html5' && video.src && video.src.startsWith('blob:')) {
+    URL.revokeObjectURL(video.src);
+  }
+  
   videoPlaceholder.classList.add('hidden');
   videoUrlInput.value = url;
 
@@ -266,8 +292,20 @@ function loadVideo(url, emit = true) {
       }
     };
     waitForAPI();
+  } else if (url.startsWith('blob:')) {
+    // Blob URL (local file)
+    currentVideoType = 'html5';
+    document.getElementById('youtube-container').style.display = 'none';
+    if (ytPlayer && ytPlayer.destroy) {
+      try { ytPlayer.destroy(); } catch(e) {}
+      ytPlayer = null;
+    }
+    if (ytTimeInterval) clearInterval(ytTimeInterval);
+    video.style.display = 'block';
+    video.src = url;
+    video.load();
   } else {
-    // HTML5 video
+    // Regular URL (HTML5 video)
     currentVideoType = 'html5';
     document.getElementById('youtube-container').style.display = 'none';
     if (ytPlayer && ytPlayer.destroy) {
@@ -300,6 +338,35 @@ loadVideoBtn.addEventListener('click', () => {
 
 videoUrlInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') loadVideoBtn.click();
+});
+
+// File input handling
+fileBtn.addEventListener('click', () => {
+  fileInput.click();
+});
+
+fileInput.addEventListener('change', () => {
+  const file = fileInput.files[0];
+  if (!file) return;
+  
+  // Validate file type
+  if (!file.type.startsWith('video/')) {
+    showToast('Please select a video file', 'error');
+    fileInput.value = '';
+    return;
+  }
+  
+  if (isHost) {
+    // Create object URL for local file
+    const fileURL = URL.createObjectURL(file);
+    loadVideo(fileURL, true);
+    showToast(`Ready to play: ${file.name}`, 'success');
+  } else {
+    showToast('Only the host can load local files', 'warning');
+  }
+  
+  // Reset input
+  fileInput.value = '';
 });
 
 // ── Local Video Events (Host Only) ──────────────────────────────────
@@ -367,6 +434,11 @@ socket.on('video-seek', ({ time }) => {
 });
 
 socket.on('video-change', ({ url }) => {
+  // Clean up previous blob URL if exists
+  if (currentVideoType === 'html5' && video.src && video.src.startsWith('blob:')) {
+    URL.revokeObjectURL(video.src);
+  }
+  
   loadVideo(url, false);
   showToast('Video changed', 'info');
 });
@@ -692,6 +764,19 @@ sidebarOverlay.addEventListener('click', () => {
 // ── Connection Status ───────────────────────────────────────────────
 socket.on('disconnect', () => {
   showToast('Disconnected. Reconnecting...', 'warning');
+  
+  // Clean up blob URL
+  if (currentVideoType === 'html5' && video.src && video.src.startsWith('blob:')) {
+    URL.revokeObjectURL(video.src);
+  }
+  
+  // Clean up YouTube player
+  if (ytPlayer && ytPlayer.destroy) {
+    try { ytPlayer.destroy(); } catch(e) {}
+    ytPlayer = null;
+  }
+  
+  if (ytTimeInterval) clearInterval(ytTimeInterval);
 });
 
 socket.on('reconnect', () => {
