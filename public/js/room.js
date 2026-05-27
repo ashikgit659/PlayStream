@@ -114,6 +114,7 @@ function createYTPlayer(videoId, startTime, autoplay) {
     }
   });
 }
+}
   // Reset the div
   playerDiv.innerHTML = '';
   playerDiv.id = 'youtube-player';
@@ -161,59 +162,9 @@ function createYTPlayer(videoId, startTime, autoplay) {
         document.getElementById('youtube-container').style.display = 'none';
         video.style.display = 'block';
         video.load();
-      }
-    }
-  });
-}
-  // Reset the div
-  playerDiv.innerHTML = '';
-  playerDiv.id = 'youtube-player';
-
-  container.style.display = 'block';
-  document.getElementById('video-player').style.display = 'none';
-
-  ytPlayer = new YT.Player('youtube-player', {
-    videoId: videoId,
-    width: '100%',
-    height: '100%',
-    playerVars: {
-      autoplay: autoplay ? 1 : 0,
-      start: Math.floor(startTime || 0),
-      controls: 0,
-      modestbranding: 1,
-      rel: 0,
-      fs: 0
-    },
-    events: {
-      onReady: (e) => {
-        // Sync volume with slider
-        e.target.setVolume(volumeSlider.value * 100);
-        if (autoplay) e.target.playVideo();
-        startYTTimeUpdater();
-      },
-      onStateChange: (e) => {
-        if (ytIgnoreEvents) return;
-        if (!isHost) return;
-        if (e.data === YT.PlayerState.PLAYING) {
-          playPauseBtn.textContent = '⏸';
-          socket.emit('video-play', { time: ytPlayer.getCurrentTime() });
-        } else if (e.data === YT.PlayerState.PAUSED) {
-          playPauseBtn.textContent = '▶';
-          socket.emit('video-pause', { time: ytPlayer.getCurrentTime() });
-        } else if (e.data === YT.PlayerState.ENDED) {
-          // Video ended, potentially advance queue
-          // Host handles queue advancement
-        }
-      },
-      onError: (e) => {
-        showToast('YouTube video error. Please check the URL.', 'error');
-        // Fall back to placeholder
-        videoPlaceholder.classList.remove('hidden');
-        document.getElementById('youtube-container').style.display = 'none';
-        video.style.display = 'block';
-      }
-    }
-  });
+       }
+     }
+   });
 }
 
 // Update seek bar / time display for YouTube
