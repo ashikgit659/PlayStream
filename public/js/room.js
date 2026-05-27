@@ -24,8 +24,12 @@ let ytIgnoreEvents = false;
 // ── YouTube Helpers ─────────────────────────────────────────────────
 function extractYouTubeId(url) {
   const patterns = [
+    // Standard YouTube URLs
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
-    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/
+    // YouTube Shorts
+    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+    // YouTube with additional parameters (like &feature=shared)
+    /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/
   ];
   for (const p of patterns) {
     const m = url.match(p);
@@ -51,6 +55,116 @@ function createYTPlayer(videoId, startTime, autoplay) {
   if (ytPlayer && ytPlayer.destroy) {
     try { ytPlayer.destroy(); } catch(e) {}
   }
+  // Reset the div
+  playerDiv.innerHTML = '';
+  playerDiv.id = 'youtube-player';
+
+  container.style.display = 'block';
+  document.getElementById('video-player').style.display = 'none';
+
+  ytPlayer = new YT.Player('youtube-player', {
+    videoId: videoId,
+    width: '100%',
+    height: '100%',
+    playerVars: {
+      autoplay: autoplay ? 1 : 0,
+      start: Math.floor(startTime || 0),
+      controls: 0,
+      modestbranding: 1,
+      rel: 0,
+      fs: 0
+    },
+    events: {
+      onReady: (e) => {
+        // Sync volume with slider
+        e.target.setVolume(volumeSlider.value * 100);
+        if (autoplay) e.target.playVideo();
+        startYTTimeUpdater();
+        // Re-enable UI
+        videoUrlInput.disabled = false;
+        loadVideoBtn.disabled = false;
+        loadVideoBtn.innerHTML = '<span>▶</span> Load';
+      },
+      onStateChange: (e) => {
+        if (ytIgnoreEvents) return;
+        if (!isHost) return;
+        if (e.data === YT.PlayerState.PLAYING) {
+          playPauseBtn.textContent = '⏸';
+          socket.emit('video-play', { time: ytPlayer.getCurrentTime() });
+        } else if (e.data === YT.PlayerState.PAUSED) {
+          playPauseBtn.textContent = '▶';
+          socket.emit('video-pause', { time: ytPlayer.getCurrentTime() });
+        } else if (e.data === YT.PlayerState.ENDED) {
+          // Video ended, potentially advance queue
+          // Host handles queue advancement
+        }
+      },
+      onError: (e) => {
+        showToast('YouTube video error. Please check the URL and try again.', 'error');
+        // Fall back to placeholder
+        videoPlaceholder.classList.remove('hidden');
+        document.getElementById('youtube-container').style.display = 'none';
+        video.style.display = 'block';
+        video.load();
+        // Re-enable UI
+        videoUrlInput.disabled = false;
+        loadVideoBtn.disabled = false;
+        loadVideoBtn.innerHTML = '<span>▶</span> Load';
+      }
+    }
+  });
+}
+  // Reset the div
+  playerDiv.innerHTML = '';
+  playerDiv.id = 'youtube-player';
+
+  container.style.display = 'block';
+  document.getElementById('video-player').style.display = 'none';
+
+  ytPlayer = new YT.Player('youtube-player', {
+    videoId: videoId,
+    width: '100%',
+    height: '100%',
+    playerVars: {
+      autoplay: autoplay ? 1 : 0,
+      start: Math.floor(startTime || 0),
+      controls: 0,
+      modestbranding: 1,
+      rel: 0,
+      fs: 0
+    },
+    events: {
+      onReady: (e) => {
+        // Sync volume with slider
+        e.target.setVolume(volumeSlider.value * 100);
+        if (autoplay) e.target.playVideo();
+        startYTTimeUpdater();
+      },
+      onStateChange: (e) => {
+        if (ytIgnoreEvents) return;
+        if (!isHost) return;
+        if (e.data === YT.PlayerState.PLAYING) {
+          playPauseBtn.textContent = '⏸';
+          socket.emit('video-play', { time: ytPlayer.getCurrentTime() });
+        } else if (e.data === YT.PlayerState.PAUSED) {
+          playPauseBtn.textContent = '▶';
+          socket.emit('video-pause', { time: ytPlayer.getCurrentTime() });
+        } else if (e.data === YT.PlayerState.ENDED) {
+          // Video ended, potentially advance queue
+          // Host handles queue advancement
+        }
+      },
+      onError: (e) => {
+        showToast('YouTube video error. Please check the URL and try again.', 'error');
+        // Fall back to placeholder
+        videoPlaceholder.classList.remove('hidden');
+        document.getElementById('youtube-container').style.display = 'none';
+        video.style.display = 'block';
+        video.load();
+      }
+    }
+  });
+}
   // Reset the div
   playerDiv.innerHTML = '';
   playerDiv.id = 'youtube-player';
@@ -224,13 +338,27 @@ function initRoom(data) {
   if (data.videoState && data.videoState.url) {
     loadVideo(data.videoState.url, false);
 video.addEventListener('loadedmetadata', () => {
-  if (data.videoState.currentTime || 0) {
-    video.currentTime = data.videoState.currentTime || 0;
-  }
+  video.currentTime = data.videoState.currentTime || 0;
   if (data.videoState.playing) {
     video.play().catch(() => {});
   }
+  // Re-enable UI
+  videoUrlInput.disabled = false;
+  loadVideoBtn.disabled = false;
+  loadVideoBtn.innerHTML = '<span>▶</span> Load';
 }, { once: true });
+
+video.addEventListener('error', () => {
+  showToast('Failed to load video. Please check the URL and try again.', 'error');
+  videoPlaceholder.classList.remove('hidden');
+  video.style.display = 'none';
+  // Re-enable UI
+  videoUrlInput.disabled = false;
+  loadVideoBtn.disabled = false;
+  loadVideoBtn.innerHTML = '<span>▶</span> Load';
+});
+
+// Also add error event for YouTube player via the onError callback in createYTPlayer
 
 video.addEventListener('error', () => {
   showToast('Failed to load video. Please check the URL or file.', 'error');
@@ -268,13 +396,20 @@ leaveRoomBtn.addEventListener('click', () => {
 function loadVideo(url, emit = true) {
   if (!url) return;
   
-  // Clean up previous object URLs if they were blob URLs
-  if (currentVideoType === 'html5' && video.src && video.src.startsWith('blob:')) {
-    URL.revokeObjectURL(video.src);
+  // Basic URL validation
+  if (!url.match(/^https?:\/\//i) && !url.startsWith('blob:')) {
+    showToast('Please enter a valid URL starting with http:// or https://', 'error');
+    return;
   }
   
+  // Show loading state
   videoPlaceholder.classList.add('hidden');
   videoUrlInput.value = url;
+  
+  // Disable input while loading
+  videoUrlInput.disabled = true;
+  loadVideoBtn.disabled = true;
+  loadVideoBtn.innerHTML = '<span class="spinner"></span> Loading...';
 
   const ytId = extractYouTubeId(url);
   if (ytId) {
@@ -292,20 +427,8 @@ function loadVideo(url, emit = true) {
       }
     };
     waitForAPI();
-  } else if (url.startsWith('blob:')) {
-    // Blob URL (local file)
-    currentVideoType = 'html5';
-    document.getElementById('youtube-container').style.display = 'none';
-    if (ytPlayer && ytPlayer.destroy) {
-      try { ytPlayer.destroy(); } catch(e) {}
-      ytPlayer = null;
-    }
-    if (ytTimeInterval) clearInterval(ytTimeInterval);
-    video.style.display = 'block';
-    video.src = url;
-    video.load();
   } else {
-    // Regular URL (HTML5 video)
+    // HTML5 video (including direct MP4, WebM, etc. URLs)
     currentVideoType = 'html5';
     document.getElementById('youtube-container').style.display = 'none';
     if (ytPlayer && ytPlayer.destroy) {
@@ -434,10 +557,10 @@ socket.on('video-seek', ({ time }) => {
 });
 
 socket.on('video-change', ({ url }) => {
-  // Clean up previous blob URL if exists
-  if (currentVideoType === 'html5' && video.src && video.src.startsWith('blob:')) {
-    URL.revokeObjectURL(video.src);
-  }
+  // Show loading state
+  videoUrlInput.disabled = true;
+  loadVideoBtn.disabled = true;
+  loadVideoBtn.innerHTML = '<span class="spinner"></span> Loading...';
   
   loadVideo(url, false);
   showToast('Video changed', 'info');
