@@ -812,8 +812,6 @@ socket.on('reconnect', () => {
     });
   }
 });
-
-// ── Keyboard Shortcuts ──────────────────────────────────────────────
 document.addEventListener('keydown', (e) => {
   // Don't trigger shortcuts when typing in inputs
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
