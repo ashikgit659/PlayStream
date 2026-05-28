@@ -24,12 +24,8 @@ let ytIgnoreEvents = false;
 // ── YouTube Helpers ─────────────────────────────────────────────────
 function extractYouTubeId(url) {
   const patterns = [
-    // Standard YouTube URLs
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
-    // YouTube Shorts
-    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
-    // YouTube with additional parameters (like &feature=shared)
-    /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/
+    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/
   ];
   for (const p of patterns) {
     const m = url.match(p);
@@ -80,10 +76,6 @@ function createYTPlayer(videoId, startTime, autoplay) {
         e.target.setVolume(volumeSlider.value * 100);
         if (autoplay) e.target.playVideo();
         startYTTimeUpdater();
-        // Re-enable UI
-        videoUrlInput.disabled = false;
-        loadVideoBtn.disabled = false;
-        loadVideoBtn.innerHTML = '<span>▶</span> Load';
       },
       onStateChange: (e) => {
         if (ytIgnoreEvents) return;
@@ -94,26 +86,11 @@ function createYTPlayer(videoId, startTime, autoplay) {
         } else if (e.data === YT.PlayerState.PAUSED) {
           playPauseBtn.textContent = '▶';
           socket.emit('video-pause', { time: ytPlayer.getCurrentTime() });
-        } else if (e.data === YT.PlayerState.ENDED) {
-          // Video ended, potentially advance queue
-          // Host handles queue advancement
         }
-      },
-      onError: (e) => {
-        showToast('YouTube video error. Please check the URL and try again.', 'error');
-        // Fall back to placeholder
-        videoPlaceholder.classList.remove('hidden');
-        document.getElementById('youtube-container').style.display = 'none';
-        video.style.display = 'block';
-        video.load();
-        // Re-enable UI
-        videoUrlInput.disabled = false;
-        loadVideoBtn.disabled = false;
-        loadVideoBtn.innerHTML = '<span>▶</span> Load';
       }
     }
   });
-
+}
 
 // Update seek bar / time display for YouTube
 let ytTimeInterval = null;
@@ -146,8 +123,6 @@ const volumeSlider = document.getElementById('volume-slider');
 const fullscreenBtn = document.getElementById('fullscreen-btn');
 const videoUrlInput = document.getElementById('video-url-input');
 const loadVideoBtn = document.getElementById('load-video-btn');
-const fileInput = document.getElementById('file-input');
-const fileBtn = document.getElementById('file-btn');
 const roomCodeText = document.getElementById('room-code-text');
 const roomCodeDisplay = document.getElementById('room-code-display');
 const participantCountText = document.getElementById('participant-count-text');
@@ -236,34 +211,12 @@ function initRoom(data) {
   // Load existing video
   if (data.videoState && data.videoState.url) {
     loadVideo(data.videoState.url, false);
-video.addEventListener('loadedmetadata', () => {
-  video.currentTime = data.videoState.currentTime || 0;
-  if (data.videoState.playing) {
-    video.play().catch(() => {});
-  }
-  // Re-enable UI
-  videoUrlInput.disabled = false;
-  loadVideoBtn.disabled = false;
-  loadVideoBtn.innerHTML = '<span>▶</span> Load';
-}, { once: true });
-
-video.addEventListener('error', () => {
-  showToast('Failed to load video. Please check the URL and try again.', 'error');
-  videoPlaceholder.classList.remove('hidden');
-  video.style.display = 'none';
-  // Re-enable UI
-  videoUrlInput.disabled = false;
-  loadVideoBtn.disabled = false;
-  loadVideoBtn.innerHTML = '<span>▶</span> Load';
-});
-
-// Also add error event for YouTube player via the onError callback in createYTPlayer
-
-video.addEventListener('error', () => {
-  showToast('Failed to load video. Please check the URL or file.', 'error');
-  videoPlaceholder.classList.remove('hidden');
-  video.style.display = 'none';
-});
+    video.addEventListener('loadedmetadata', () => {
+      video.currentTime = data.videoState.currentTime || 0;
+      if (data.videoState.playing) {
+        video.play().catch(() => {});
+      }
+    }, { once: true });
   }
 
   // Load queue
@@ -294,21 +247,8 @@ leaveRoomBtn.addEventListener('click', () => {
 
 function loadVideo(url, emit = true) {
   if (!url) return;
-  
-  // Basic URL validation
-  if (!url.match(/^https?:\/\//i) && !url.startsWith('blob:')) {
-    showToast('Please enter a valid URL starting with http:// or https://', 'error');
-    return;
-  }
-  
-  // Show loading state
   videoPlaceholder.classList.add('hidden');
   videoUrlInput.value = url;
-  
-  // Disable input while loading
-  videoUrlInput.disabled = true;
-  loadVideoBtn.disabled = true;
-  loadVideoBtn.innerHTML = '<span class="spinner"></span> Loading...';
 
   const ytId = extractYouTubeId(url);
   if (ytId) {
@@ -327,7 +267,7 @@ function loadVideo(url, emit = true) {
     };
     waitForAPI();
   } else {
-    // HTML5 video (including direct MP4, WebM, etc. URLs)
+    // HTML5 video
     currentVideoType = 'html5';
     document.getElementById('youtube-container').style.display = 'none';
     if (ytPlayer && ytPlayer.destroy) {
@@ -360,35 +300,6 @@ loadVideoBtn.addEventListener('click', () => {
 
 videoUrlInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') loadVideoBtn.click();
-});
-
-// File input handling
-fileBtn.addEventListener('click', () => {
-  fileInput.click();
-});
-
-fileInput.addEventListener('change', () => {
-  const file = fileInput.files[0];
-  if (!file) return;
-  
-  // Validate file type
-  if (!file.type.startsWith('video/')) {
-    showToast('Please select a video file', 'error');
-    fileInput.value = '';
-    return;
-  }
-  
-  if (isHost) {
-    // Create object URL for local file
-    const fileURL = URL.createObjectURL(file);
-    loadVideo(fileURL, true);
-    showToast(`Ready to play: ${file.name}`, 'success');
-  } else {
-    showToast('Only the host can load local files', 'warning');
-  }
-  
-  // Reset input
-  fileInput.value = '';
 });
 
 // ── Local Video Events (Host Only) ──────────────────────────────────
@@ -456,11 +367,6 @@ socket.on('video-seek', ({ time }) => {
 });
 
 socket.on('video-change', ({ url }) => {
-  // Show loading state
-  videoUrlInput.disabled = true;
-  loadVideoBtn.disabled = true;
-  loadVideoBtn.innerHTML = '<span class="spinner"></span> Loading...';
-  
   loadVideo(url, false);
   showToast('Video changed', 'info');
 });
@@ -786,19 +692,6 @@ sidebarOverlay.addEventListener('click', () => {
 // ── Connection Status ───────────────────────────────────────────────
 socket.on('disconnect', () => {
   showToast('Disconnected. Reconnecting...', 'warning');
-  
-  // Clean up blob URL
-  if (currentVideoType === 'html5' && video.src && video.src.startsWith('blob:')) {
-    URL.revokeObjectURL(video.src);
-  }
-  
-  // Clean up YouTube player
-  if (ytPlayer && ytPlayer.destroy) {
-    try { ytPlayer.destroy(); } catch(e) {}
-    ytPlayer = null;
-  }
-  
-  if (ytTimeInterval) clearInterval(ytTimeInterval);
 });
 
 socket.on('reconnect', () => {
@@ -812,6 +705,8 @@ socket.on('reconnect', () => {
     });
   }
 });
+
+// ── Keyboard Shortcuts ──────────────────────────────────────────────
 document.addEventListener('keydown', (e) => {
   // Don't trigger shortcuts when typing in inputs
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
