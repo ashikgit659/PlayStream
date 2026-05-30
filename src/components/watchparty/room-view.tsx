@@ -208,9 +208,15 @@ export default function RoomView() {
   // Initialize socket
   useEffect(() => {
     const initSocket = () => {
-      // Connect to socket server on the same host, port 3003
-      const host = window.location.hostname;
-      const socketInstance = io(`http://${host}:3003`, {
+      // Determine socket server URL: use env var if set (for production), else same host:3003
+      let socketUrl = ''
+      if (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_SOCKET_URL) {
+        socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL
+      } else {
+        const host = window.location.hostname
+        socketUrl = `http://${host}:3003`
+      }
+      const socketInstance = io(socketUrl, {
         transports: ['websocket', 'polling'],
         forceNew: true,
         reconnection: true,
@@ -621,7 +627,13 @@ export default function RoomView() {
     setVideoState('paused')
     setIsConnected(false)
 
-    const socketInstance = io(`http://${window.location.hostname}:3003`, {
+    const socketUrl = (() => {
+      if (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_SOCKET_URL) {
+        return process.env.NEXT_PUBLIC_SOCKET_URL
+      }
+      return `http://${window.location.hostname}:3003`;
+    })();
+    const socketInstance = io(socketUrl, {
       transports: ['websocket', 'polling'],
       forceNew: true,
       reconnection: true,
