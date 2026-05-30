@@ -509,9 +509,9 @@ io.on('connection', (socket: Socket) => {
   })
 })
 
-const PORT = 3003
+const PORT = process.env.PORT || 3003
 httpServer.listen(PORT, () => {
-  console.log(`WatchParty Socket.io server running on port ${PORT}`)
+  console.log(`[Socket] WatchParty Socket.io server running on port ${PORT}`)
 })
 
 process.on('SIGTERM', () => {
