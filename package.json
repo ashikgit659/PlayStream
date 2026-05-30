@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
-    "build": "next build && xcopy /E /I .next\\static .next\\standalone\\.next\\ && xcopy /E /I public .next\\standalone\\",
+    "build": "next build && node scripts/copy.cjs",
     "start": "powershell -Command \"$env:NODE_ENV='production'; & node .\\.next\\standalone\\server.js\"",
     "lint": "eslint .",
     "db:push": "prisma db push",
@@ -87,6 +87,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "bun-types": "^1.3.4",
+    "cpy": "^9.0.0",
     "eslint": "^9",
     "eslint-config-next": "^16.1.1",
     "tailwindcss": "^4",
