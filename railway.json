@@ -1,8 +1,0 @@
-{
-  "healthCheck": {
-    "path": "/health",
-    "timeout": 30,
-    "interval": 60,
-    "protocol": "http"
-  }
-}
